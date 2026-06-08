@@ -927,7 +927,27 @@ socket.on("frenzy_game_over", data => {
 });
 
 socket.on("battle_update_grid", data => {
-    console.log("battle_update_grid", data);
+    console.log("battle_update_grid:", data);
+
+    const guesses = data.guesses || [];
+    const newGuess = data.new_guess || null;
+
+    renderBattleSharedGrid(guesses);
+
+    currentGuess = "";
+    currentRow = Math.min(guesses.length, MAX_GUESSES);
+
+    if (currentRow < MAX_GUESSES) {
+        updateCurrentRow();
+    }
+
+    if (newGuess && newGuess.username) {
+        if (newGuess.username === currentUser) {
+            showMessage("已送出猜測，換下一個字試試！", "white");
+        } else {
+            showMessage(`${newGuess.username} 猜了 ${newGuess.word}`, "white");
+        }
+    }
 });
 
 socket.on("battle_round_over", data => {
