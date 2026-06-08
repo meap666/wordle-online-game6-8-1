@@ -533,11 +533,25 @@ function submitGuess() {
             guess += cell ? cell.innerText : "";
         }
     }
-    socket.emit("submit_guess", {
-        room_id: currentRoom,
-        username: currentUser,
-        guess: guess
-    });
+    if (!socket.connected) {
+    const messageBox = document.getElementById("message-box");
+    messageBox.innerText = "伺服器即時連線尚未連上，請重新整理頁面再試一次。";
+    messageBox.style.color = "red";
+    console.error("SocketIO 尚未連線，無法送出猜測");
+    return;
+}
+
+console.log("送出猜測：", {
+    room_id: currentRoom,
+    username: currentUser,
+    guess: guess
+});
+
+socket.emit("submit_guess", {
+    room_id: currentRoom,
+    username: currentUser,
+    guess: guess
+});
 }
 
 socket.on("update_total_score", function(data) {
