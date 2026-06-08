@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>多人線上 Wordle 搶分戰</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260608-4">
 </head>
 <body>
     <div id="settings-container" style="display: none;">
@@ -26,7 +26,7 @@
             <button class="sidebar-btn" onclick="backToLobby()">🏠 回首頁</button>
             <button id="btn-sidebar-switch-mode" class="sidebar-btn" onclick="switchGameMode()">🎮 切換至單人模式</button>
             <button class="sidebar-btn danger" onclick="logoutWrapper()">👋 登出帳號</button>
-            </div>
+        </div>
     </div>
 
     <div id="app-container">
@@ -110,11 +110,12 @@
                     </div>
                     <button onclick="createRoom()" class="lobby-btn btn-create">✨ 建立房間</button>
                 </div>
+
                 <div class="lobby-card join-card">
                     <h3 class="card-title">🔑 進入現有房間</h3>
                     <div class="input-group">
                         <label for="room-id">房間號碼</label>
-                        <input type="text" id="room-id" placeholder="輸入房間號碼 (例如: 123)">
+                        <input type="text" id="room-id" placeholder="輸入房間號碼，例如 123">
                     </div>
                     <div class="join-info-tip" style="margin-top: 15px; padding: 10px; background: rgba(33, 150, 243, 0.1); border-radius: 8px;">
                         <p style="margin: 0; color: #2196F3; font-weight: bold;">💡 輸入公開或私人房號皆可直接加入！</p>
@@ -122,10 +123,12 @@
                     <button onclick="joinGame()" class="lobby-btn btn-join">🚪 加入房間</button>
                 </div>
             </div>
+
             <div style="max-width: 750px; margin: 0 auto 30px auto; padding: 24px; border-radius: 12px; border: 1.5px dashed var(--border-color);">
                 <h3 style="margin-top: 0; font-size: 1.25em; margin-bottom: 15px;">🚪 可加入的房間列表</h3>
                 <div id="available-rooms-list"></div>
             </div>
+
             <button onclick="closeMultiplayerLobby()" style="background-color: #f44336; font-size: 1.1em; padding: 12px 40px;">返回大廳</button>
         </div>
 
@@ -177,8 +180,8 @@
             <div style="margin: 20px auto; width: 60%; padding: 15px; border-radius: 8px;">
                 <h3>⚙️ 遊戲模式設定</h3>
                 <select id="game-mode-select" disabled style="padding: 10px; font-size: 1em; width: 80%;">
-                    <option value="frenzy" selected>限時狂熱賽 (預設)</option>
-                    <option value="battle">同題搶答大亂鬥 (Shared Grid Battle)</option>
+                    <option value="frenzy" selected>限時狂熱賽 預設</option>
+                    <option value="battle">同題搶答大亂鬥 Shared Grid Battle</option>
                 </select>
                 <p id="host-message" style="opacity: 0.8; margin-top: 10px;">等待房主選擇模式並開始遊戲...</p>
                 <button id="btn-start-game" onclick="startGame()" style="display: none; background-color: #FF9800; font-size: 1.2em; margin: 15px auto 0 auto; align-items: center; justify-content: center; gap: 8px; min-width: 180px;">🚀 開始遊戲</button>
@@ -191,10 +194,12 @@
                     <h2 id="timer-title" style="margin: 0; opacity: 0.8;">剩餘時間</h2>
                     <div id="frenzy-timer" style="font-size: 3em; font-weight: bold; color: #ff3b30;">03:00</div>
                 </div>
+
                 <div id="scoreboard-area">
                     <h3>👑 即時計分板</h3>
                     <div id="score-list" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;"></div>
                 </div>
+
                 <div id="single-player-stats" style="display: none; width: 100%;">
                     <h3>🎮 單人模式</h3>
                     <p style="font-size: 1.2em; margin-top: 15px;">你的歷史總分：<strong id="my-total-score" style="color: var(--primary-color); font-size: 1.6em;">0</strong> 分</p>
@@ -203,8 +208,7 @@
                         <h4 style="margin: 0 0 10px 0; color: var(--text-color); font-size: 1.1em;">
                             🏆 全服即時排行
                         </h4>
-                        <div id="mini-leaderboard-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 5px;">
-                            </div>
+                        <div id="mini-leaderboard-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 5px;"></div>
                     </div>
                 </div>
             </div>
@@ -286,7 +290,7 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script src="{{ url_for('static', filename='game.js') }}"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='game.js') }}?v=20260608-4"></script>
 </body>
 </html>
