@@ -172,6 +172,54 @@ def handle_join(data):
 
 @socketio.on("create_room")
 def handle_create_room(data):
+    print("收到 create_room：", data)
+
+    room_id = data.get("room_id")
+    max_players = data.get("max_players", 10)
+    is_private = data.get("is_private", False)
+    username = session.get("username") or data.get("username")
+
+    if not username:
+        emit("join_error", {"message": "請先登入帳號喔！"})
+        print("create_room 失敗：沒有 username")
+        return
+
+    player = Player.query.filter_by(username=username).first()
+
+    if not player:
+        emit("join_error", {"message": f"找不到玩家資料：{username}，請登出後重新註冊或重新登入。"})
+        print(f"create_room 失敗：找不到玩家 {username}")
+        return
+
+    result = manager_create_room(room_id, username, max_players, is_private)
+
+    if result.is_success:
+        join_room(room_id)
+
+        online_connections[getattr(request, "sid", None)] = {
+            "room_id": room_id,
+            "username": username
+        }
+
+        emit("create_success", {
+            "room_id": room_id,
+            "players": list(result.data["players"].keys()),
+            "host": result.data["host"]
+        })
+
+        emit("update_waiting_room", {
+            "players": list(result.data["players"].keys()),
+            "host": result.data["host"]
+        }, to=room_id)
+
+        emit("update_scoreboard", result.data["players"], to=room_id)
+
+        broadcast_rooms_list()
+
+        print(f"create_room 成功：room_id={room_id}, username={username}")
+    else:
+        emit("join_error", {"message": result.error_message})
+        print(f"create_room 失敗：{result.error_message}")
     room_id = data.get("room_id")
     max_players = data.get("max_players", 10)
     is_private = data.get("is_private", False)
