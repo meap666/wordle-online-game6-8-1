@@ -874,16 +874,17 @@ socket.on("update_total_score", data => {
 });
 
 socket.on("guess_result", data => {
+    console.log("guess_result:", data);
     applyGuessResult(data);
 });
 
 socket.on("guess_error", data => {
-    const msg = data.message || "猜測失敗";
-
-    showMessage(msg, "red");
     console.error("guess_error:", data);
 
-    if (msg.includes("已被猜過") || msg.includes("已經猜過")) {
+    const msg = data.message || "猜測失敗";
+    showMessage(msg, "red");
+
+    if (msg.includes("已經猜過") || msg.includes("已被猜過")) {
         currentGuess = "";
         updateCurrentRow();
     }
@@ -895,6 +896,8 @@ socket.on("join_error", data => {
 });
 
 socket.on("create_success", data => {
+    console.log("create_success:", data);
+
     currentRoom = data.room_id;
     showWaitingRoom(data.room_id, data.players || [], data.host || "");
 });
