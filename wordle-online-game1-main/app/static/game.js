@@ -240,8 +240,41 @@ function handleInput(key) {
 
 document.addEventListener("keydown", (e) => {
     if (!currentRoom || isGameOver) return;
-    if (document.activeElement && document.activeElement.tagName === "INPUT") return;
+
+    const active = document.activeElement;
+
+    // 只有在「看得到的 input」才不要吃鍵盤事件，避免登入框隱藏後 Enter 失效
+    if (
+        active &&
+        active.tagName === "INPUT" &&
+        active.offsetParent !== null
+    ) {
+        return;
+    }
+
     const key = e.key;
+
+    if (key === "Enter" || key === "Backspace" || (/^[a-zA-Z]$/.test(key) && key.length === 1)) {
+        e.preventDefault();
+
+        if (!e.repeat) {
+            handleInput(key);
+        }
+
+        const lowerKey = key.toLowerCase();
+        const btn = document.querySelector(`.virtual-keyboard .key[data-key="${lowerKey}"]`);
+
+        if (btn) {
+            btn.style.transform = "scale(0.92)";
+            btn.style.opacity = "0.85";
+
+            setTimeout(() => {
+                btn.style.transform = "";
+                btn.style.opacity = "";
+            }, 150);
+        }
+    }
+});
     if (key === "Enter" || key === "Backspace" || (/^[a-zA-Z]$/.test(key) && key.length === 1)) {
         e.preventDefault();
         if (!e.repeat) {
