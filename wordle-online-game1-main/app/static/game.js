@@ -878,7 +878,15 @@ socket.on("guess_result", data => {
 });
 
 socket.on("guess_error", data => {
-    showMessage(data.message || "猜測失敗", "red");
+    const msg = data.message || "猜測失敗";
+
+    showMessage(msg, "red");
+    console.error("guess_error:", data);
+
+    if (msg.includes("已被猜過") || msg.includes("已經猜過")) {
+        currentGuess = "";
+        updateCurrentRow();
+    }
 });
 
 socket.on("join_error", data => {
@@ -925,7 +933,66 @@ socket.on("frenzy_game_over", data => {
     showMessage("時間到！遊戲結束", "orange");
     isGameOver = true;
 });
+function renderBattleSharedGrid(guesses) {
+    const grid = document.getElementById("wordle-grid");
 
+    if (!grid) return;
+
+    for (let r = 0; r < MAX_GUESSES; r++) {
+        for (let c = 0; c < WORD_LENGTH; c++) {
+            const cell = document.getElementById(`cell-${r}-${c}`);
+
+            if (!cell) continue;
+
+            cell.innerText = "";
+            cell.className = "cell";
+            cell.style.backgroundColor = "";
+            cell.style.color = "";
+        }
+    }
+
+    resetKeyboard();
+
+    guesses.slice(0, MAX_GUESSES).forEach((guessEntry, rowIndex) => {
+        const details = guessEntry.details || [];
+        const word = guessEntry.word || "";
+
+        for (let i = 0; i < WORD_LENGTH; i++) {
+            const cell = document.getElementById(`cell-${rowIndex}-${i}`);
+            const item = details[i];
+
+            if (!cell) continue;
+
+            const letter = item ? item.letter : word[i];
+            const status = item ? item.status : "gray";
+
+            cell.innerText = letter || "";
+            cell.classList.add(status);
+
+            if (status === "green") {
+                cell.style.backgroundColor = "#6aaa64";
+                cell.style.color = "white";
+            } else if (status === "yellow") {
+                cell.style.backgroundColor = "#c9b458";
+                cell.style.color = "white";
+            } else {
+                cell.style.backgroundColor = "#787c7e";
+                cell.style.color = "white";
+            }
+
+            if (letter) {
+                updateKeyboardKey(letter, status);
+            }
+        }
+    });
+
+    currentRow = Math.min(guesses.length, MAX_GUESSES);
+
+    if (currentRow >= MAX_GUESSES) {
+        isGameOver = true;
+        showMessage("本回合猜測次數已滿，等待下一回合。", "orange");
+    }
+}
 socket.on("battle_update_grid", data => {
     console.log("battle_update_grid:", data);
 
@@ -951,12 +1018,26 @@ socket.on("battle_update_grid", data => {
 });
 
 socket.on("battle_round_over", data => {
-    showMessage(`本回合結束，答案是 ${data.target || "未知"}`, "orange");
+    const winner = data.winner;
+    const target = data.target || "未知";
+
+    isGameOver = true;
+    currentGuess = "";
+
+    if (winner) {
+        showMessage(`${winner} 答對了！答案是 ${target}，等待下一回合...`, "green");
+    } else {
+        showMessage(`本回合結束，答案是 ${target}，等待下一回合...`, "orange");
+    }
 });
 
 socket.on("battle_next_round", data => {
-    if ($("battle-current-round")) {
-        $("battle-current-round").innerText = data.current_round || 1;
+    currentGuess = "";
+    currentRow = 0;
+    isGameOver = false;
+
+    if (document.getElementById("battle-current-round")) {
+        document.getElementById("battle-current-round").innerText = data.current_round || 1;
     }
 
     if (data.end_time) {
@@ -964,6 +1045,8 @@ socket.on("battle_next_round", data => {
     }
 
     initGrid();
+
+    showMessage("新回合開始！", "white");
 });
 
 socket.on("battle_game_over", data => {
