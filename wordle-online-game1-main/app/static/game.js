@@ -1337,3 +1337,23 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+window.login = login;
+window.register = register;
+window.logout = logout;
+window.logoutWrapper = logoutWrapper;
+window.joinSinglePlayer = joinSinglePlayer;
+window.openMultiplayerLobby = openMultiplayerLobby;
+window.closeMultiplayerLobby = closeMultiplayerLobby;
+window.createRoom = createRoom;
+window.joinGame = joinGame;
+window.startGame = startGame;
+window.openLeaderboard = openLeaderboard;
+window.closeLeaderboard = closeLeaderboard;
+window.openAccountInfo = openAccountInfo;
+window.closeAccountInfo = closeAccountInfo;
+window.fetchLeaderboard = fetchLeaderboard;
+window.switchHistoryTab = switchHistoryTab;
+window.toggleSettings = toggleSettings;
+window.changeTheme = changeTheme;
+window.backToLobby = backToLobby;
+window.switchGameMode = switchGameMode;
