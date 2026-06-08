@@ -172,99 +172,63 @@ def handle_join(data):
 
 @socketio.on("create_room")
 def handle_create_room(data):
-    print("收到 create_room：", data)
+    print("收到 create_room：", data, flush=True)
 
-    room_id = data.get("room_id")
+    room_id = str(data.get("room_id", "")).strip()
     max_players = data.get("max_players", 10)
     is_private = data.get("is_private", False)
     username = session.get("username") or data.get("username")
 
     if not username:
         emit("join_error", {"message": "請先登入帳號喔！"})
-        print("create_room 失敗：沒有 username")
+        print("create_room 失敗：沒有 username", flush=True)
+        return
+
+    if not room_id:
+        emit("join_error", {"message": "房間號碼不能為空！"})
+        print("create_room 失敗：房間號碼空白", flush=True)
         return
 
     player = Player.query.filter_by(username=username).first()
 
     if not player:
-        emit("join_error", {"message": f"找不到玩家資料：{username}，請登出後重新註冊或重新登入。"})
-        print(f"create_room 失敗：找不到玩家 {username}")
+        emit("join_error", {
+            "message": f"找不到玩家資料：{username}，請重新註冊或重新登入。"
+        })
+        print(f"create_room 失敗：找不到玩家 {username}", flush=True)
         return
 
     result = manager_create_room(room_id, username, max_players, is_private)
 
-    if result.is_success:
-        join_room(room_id)
-
-        online_connections[getattr(request, "sid", None)] = {
-            "room_id": room_id,
-            "username": username
-        }
-
-        emit("create_success", {
-            "room_id": room_id,
-            "players": list(result.data["players"].keys()),
-            "host": result.data["host"]
-        })
-
-        emit("update_waiting_room", {
-            "players": list(result.data["players"].keys()),
-            "host": result.data["host"]
-        }, to=room_id)
-
-        emit("update_scoreboard", result.data["players"], to=room_id)
-
-        broadcast_rooms_list()
-
-        print(f"create_room 成功：room_id={room_id}, username={username}")
-    else:
+    if not result.is_success:
         emit("join_error", {"message": result.error_message})
-        print(f"create_room 失敗：{result.error_message}")
-    room_id = data.get("room_id")
-    max_players = data.get("max_players", 10)
-    is_private = data.get("is_private", False)
-    username = session.get("username") or data.get("username")
-    if not username:
-        emit("join_error", {"message": "請先登入帳號喔！"})
+        print(f"create_room 失敗：{result.error_message}", flush=True)
         return
 
-    player = Player.query.filter_by(username=username).first()
-    if not player:
-        return
-    
-    result = manager_create_room(room_id, username, max_players, is_private)
-    
-    if result.is_success:
-        # 讓連線加入房間
-        join_room(room_id)
-        
-        # 追蹤連線
-        online_connections[getattr(request, "sid", None)] = {
-            "room_id": room_id,
-            "username": username
-        }
-        
-        # 回應建立成功，帶入房間資訊
-        emit("create_success", {
-            "room_id": room_id,
-            "players": list(result.data["players"].keys()),
-            "host": result.data["host"]
-        })
-        
-        # 廣播更新大廳名單給包廂內所有人
-        emit("update_waiting_room", {
-            "players": list(result.data["players"].keys()),
-            "host": result.data["host"]
-        }, to=room_id)
-        
-        # 同時也更新計分板
-        emit("update_scoreboard", result.data["players"], to=room_id)
-        
-        # 更新大廳的公開房間列表
-        broadcast_rooms_list()
-    else:
-        # 建立失敗
-        emit("join_error", {"message": result.error_message})
+    join_room(room_id)
+
+    online_connections[getattr(request, "sid", None)] = {
+        "room_id": room_id,
+        "username": username
+    }
+
+    emit("create_success", {
+        "room_id": room_id,
+        "players": list(result.data["players"].keys()),
+        "host": result.data["host"]
+    })
+
+    emit("update_waiting_room", {
+        "players": list(result.data["players"].keys()),
+        "host": result.data["host"]
+    }, to=room_id)
+
+    emit("update_scoreboard", result.data["players"], to=room_id)
+
+    broadcast_rooms_list()
+
+    print(f"create_room 成功：room_id={room_id}, username={username}", flush=True)
+    return
 
 def battle_round_timer_task(room_id, round_number, session_id, app):
     """大亂鬥每回合倒數 5 分鐘 (300 秒)"""
