@@ -464,6 +464,12 @@ function joinSinglePlayer() {
     miniLeaderboardInterval = setInterval(fetchMiniLeaderboard, 5000); 
 
     initGrid();
+
+if (document.activeElement) {
+    document.activeElement.blur();
+}
+
+document.body.focus();
 }
 
 function createRoom() {
