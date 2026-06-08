@@ -432,16 +432,44 @@ function closeMultiplayerLobby() {
 }
 
 function createRoom() {
-    const roomInput = $("create-room-id");
-    const maxInput = $("room-max-players");
-    const privacyInput = $("room-privacy");
+    console.log("createRoom 被按下");
+
+    const roomInput = document.getElementById("create-room-id");
+    const maxInput = document.getElementById("room-max-players");
+    const privacyInput = document.getElementById("room-privacy");
+
+    if (!roomInput) {
+        alert("找不到 create-room-id 輸入框");
+        console.error("找不到 create-room-id");
+        return;
+    }
 
     const roomId = roomInput.value.trim();
-    const maxPlayers = parseInt(maxInput.value || "5", 10);
-    const isPrivate = privacyInput.value === "private";
+    const maxPlayers = maxInput ? parseInt(maxInput.value || "5", 10) : 5;
+    const isPrivate = privacyInput ? privacyInput.value === "private" : false;
+
+    console.log("建立房間資料：", {
+        roomId: roomId,
+        maxPlayers: maxPlayers,
+        isPrivate: isPrivate,
+        currentUser: currentUser,
+        socketConnected: socket.connected
+    });
+
+    if (!currentUser) {
+        alert("目前沒有登入帳號，請重新登入");
+        console.error("currentUser 是空的");
+        return;
+    }
 
     if (!roomId) {
         alert("請輸入房間號碼");
+        return;
+    }
+
+    if (!socket.connected) {
+        alert("SocketIO 尚未連線，請重新整理頁面");
+        console.error("SocketIO 尚未連線");
         return;
     }
 
@@ -453,6 +481,8 @@ function createRoom() {
         max_players: maxPlayers,
         is_private: isPrivate
     });
+
+    console.log("已送出 create_room 事件");
 }
 
 function joinGame(roomIdFromButton = "") {
@@ -852,7 +882,8 @@ socket.on("guess_error", data => {
 });
 
 socket.on("join_error", data => {
-    alert(data.message || "加入失敗");
+    console.error("join_error:", data);
+    alert(data.message || "加入或建立房間失敗");
 });
 
 socket.on("create_success", data => {
