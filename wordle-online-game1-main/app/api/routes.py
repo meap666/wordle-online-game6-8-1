@@ -1,10 +1,20 @@
-from flask import Blueprint, jsonify, render_template, request, session
+from pathlib import Path
+
+from flask import Blueprint, jsonify, render_template, request, session, send_from_directory
+from werkzeug.security import generate_password_hash, check_password_hash
+
+from app.models.orm import Player, GameRecord, db
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.models.orm import Player, GameRecord, db
 
 # 建立一個名為 'main' 的接待櫃台 (Blueprint)
 main_bp = Blueprint('main', __name__)
+STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 
+
+@main_bp.route("/assets/<path:filename>")
+def custom_static_files(filename):
+    return send_from_directory(STATIC_DIR, filename)
 # 當玩家來到遊戲大門口（網址是 / 時）
 @main_bp.route('/')
 def index():
