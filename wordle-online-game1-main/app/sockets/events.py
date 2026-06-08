@@ -291,107 +291,153 @@ def battle_round_delay_task(room_id, app):
 # 當收到玩家用對講機喊 "submit_guess" (送出猜的單字) 時
 @socketio.on("submit_guess")
 def handle_guess(data):
-    room_id = data["room_id"]
+    print("收到 submit_guess：", data, flush=True)
+
+    room_id = data.get("room_id")
     username = session.get("username") or data.get("username")
-    guess_word = data["guess"]
+    guess_word = str(data.get("guess", "")).upper().strip()
 
     if not username:
         emit("guess_error", {"message": "請先登入帳號！"})
+        print("submit_guess 失敗：沒有 username", flush=True)
+        return
+
+    if not room_id:
+        emit("guess_error", {"message": "找不到房間代號！"})
+        print("submit_guess 失敗：沒有 room_id", flush=True)
+        return
+
+    if not guess_word:
+        emit("guess_error", {"message": "請輸入單字！"})
+        print("submit_guess 失敗：沒有 guess_word", flush=True)
+        return
+
+    player = Player.query.filter_by(username=username).first()
+
+    if not player:
+        emit("guess_error", {
+            "message": f"找不到玩家資料：{username}，請重新登入或重新註冊。"
+        })
+        print(f"submit_guess 失敗：找不到玩家 {username}", flush=True)
         return
 
     from app.services.room_service import active_rooms
-    if room_id in active_rooms and active_rooms[room_id].get("mode") == "battle":
+
+    if room_id not in active_rooms:
+        if str(room_id).startswith("single_"):
+            join_result = manager_join_room(room_id, username)
+
+            if not join_result.is_success:
+                emit("guess_error", {"message": join_result.error_message})
+                print(f"submit_guess 失敗：建立單人房失敗 {join_result.error_message}", flush=True)
+                return
+
+            join_room(room_id)
+
+            online_connections[getattr(request, "sid", None)] = {
+                "room_id": room_id,
+                "username": username
+            }
+
+            print(f"單人房自動建立成功：{room_id}", flush=True)
+        else:
+            emit("guess_error", {"message": "找不到房間，請重新進入遊戲。"})
+            print(f"submit_guess 失敗：找不到房間 {room_id}", flush=True)
+            return
+
+    if active_rooms[room_id].get("mode") == "battle":
         result = handle_battle_guess(room_id, username, guess_word)
+
         if not result.is_success:
             emit("guess_error", {"message": result.error_message})
+            print(f"battle guess 失敗：{result.error_message}", flush=True)
             return
-            
-        # pyrefly: ignore [unsupported-operation]
+
         guesses = result.data["guesses"]
-        # pyrefly: ignore [unsupported-operation]
         new_guess = result.data["new_guess"]
-        # pyrefly: ignore [unsupported-operation]
         round_over = result.data["round_over"]
-        # pyrefly: ignore [unsupported-operation]
         winner = result.data["winner"]
-        # pyrefly: ignore [unsupported-operation]
         target = result.data["target"]
-        
+
         emit("battle_update_grid", {
             "guesses": guesses,
             "new_guess": new_guess
         }, to=room_id)
-        
-        # 每次成功送出猜測，即時向所有人廣播更新大亂鬥計分板及剩餘次數
+
         emit("update_scoreboard", get_battle_scoreboard_data(room_id), to=room_id)
-        
+
         if round_over:
             emit("battle_round_over", {
                 "winner": winner,
                 "target": target,
                 "next_round_delay": 5
             }, to=room_id)
-            
+
             from flask import current_app
             app = getattr(current_app, "_get_current_object")()
             socketio.start_background_task(battle_round_delay_task, room_id, app)
+
+        print(f"battle guess 成功：room_id={room_id}, username={username}, guess={guess_word}", flush=True)
         return
 
-    # 1. 伺服器端猜測限制與重設校驗
     guesses = get_player_guesses(room_id, username)
+
     if len(guesses) >= GameConfig.MAX_GUESSES:
         emit("guess_error", {"message": "您已經猜過 6 次囉，請等待系統更換題目！"})
-        return
-        
-    if guess_word.upper() in guesses:
-        emit("guess_error", {"message": GameConfig.MSG_ALREADY_GUESSED})
+        print("submit_guess 失敗：已猜滿 6 次", flush=True)
         return
 
-    # 2. 問包廂管理員，這位玩家現在要猜的題目是什麼？
+    if guess_word in guesses:
+        emit("guess_error", {"message": GameConfig.MSG_ALREADY_GUESSED})
+        print(f"submit_guess 失敗：重複猜 {guess_word}", flush=True)
+        return
+
     target_word = get_player_target(room_id, username)
-    
-    # 3. 把玩家猜的字交給「裁判大腦」改考卷 (判斷綠、黃、灰與英文單字有效性)
+
+    if not target_word:
+        emit("guess_error", {"message": "找不到目前題目，請重新進入遊戲。"})
+        print(f"submit_guess 失敗：找不到 target_word room={room_id}, user={username}", flush=True)
+        return
+
     judge_result = check_wordle_guess(target_word, guess_word)
-    
-    # 情況 A：如果字數不對或不是合法單字，偷偷用對講機告訴玩家就好，不用廣播
+
     if not judge_result.is_success:
         emit("guess_error", {"message": judge_result.error_message})
+        print(f"submit_guess 失敗：{judge_result.error_message}", flush=True)
         return
 
-    # 記錄此次有效的猜測
     add_player_guess(room_id, username, guess_word)
     guesses = get_player_guesses(room_id, username)
 
-    # 情況 B：如果完全猜中 (拿到全綠燈)
-    # pyrefly: ignore [unsupported-operation]
     if judge_result.data["is_correct"]:
-        player = Player.query.filter_by(username=username).first()
-        if player:
-            player.total_score += 1
-            player.games_won += 1
-            player.games_played += 1
-            db.session.commit()
-            
-            emit("update_total_score", {"total_score": player.total_score}, to=room_id)
-            
+        player.total_score += 1
+        player.games_won += 1
+        player.games_played += 1
+        db.session.commit()
+
+        emit("update_total_score", {"total_score": player.total_score})
+
         score_result = player_scored(room_id, username)
+
         if score_result.is_success:
             emit("update_scoreboard", score_result.data, to=room_id)
-            
-        # 若當前為狂熱賽 (frenzy) 模式，則廣播即時得分提示（不含單字資訊）給房內所有人
+
         if room_id in active_rooms and active_rooms[room_id].get("mode") == "frenzy":
             emit("frenzy_player_scored", {"username": username}, to=room_id)
-            
-    # 情況 C：猜錯達 6 次，伺服器主動幫他換新字（不加分），並通知他
+
     elif len(guesses) >= GameConfig.MAX_GUESSES:
         skip_player_word(room_id, username)
+
         if isinstance(judge_result.data, dict):
             judge_result.data["guesses_exhausted"] = True
-        emit("guess_result", judge_result.data)
-        return
-    
-    # 4. 把批改好的考卷（綠黃灰結果）還給這位猜字的玩家
+
     emit("guess_result", judge_result.data)
+
+    print(
+        f"submit_guess 成功：room_id={room_id}, username={username}, guess={guess_word}, target={target_word}",
+        flush=True
+    )
+    return
 
 @socketio.on("leave_room")
 def handle_leave_room(data):
